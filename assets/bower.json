@@ -1,0 +1,22 @@
+{
+  "name": "SupportBee Reporting Assets",
+  "homepage": "https://github.com/priyolahiri/supportbee_report",
+  "authors": [
+    "Priyadarshi Lahiri <priyo@edgenetworks.in>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-bootstrap": "^2.0.1",
+    "gentelella": "^1.3.0"
+  }
+}
