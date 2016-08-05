@@ -1,5 +1,4 @@
 import rethinkdb as r
-from rethinkdb.errors import RqlRuntimeError, RqlDriverError
 import requests
 import arrow
 import simplejson
@@ -8,10 +7,13 @@ from operator import itemgetter
 
 
 class SupportBee:
+
     def __init__(self, app_settings):
         self.app_settings = app_settings
-        self.headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-        self.base_url = "https://" + app_settings['supportbee']['company'] + ".supportbee.com"
+        self.headers = {'Content-Type': 'application/json',
+                        'Accept': 'application/json'}
+        self.base_url = "https://" + \
+            app_settings['supportbee']['company'] + ".supportbee.com"
         self.url_params = {"auth_token": app_settings['supportbee']['apikey']}
         self.r_conn = r.connect(host=app_settings['rethink']['db_host'], port=int(app_settings['rethink']['db_port']),
                                 db=app_settings['rethink']['db_name'])
@@ -37,7 +39,8 @@ class SupportBee:
         url_params['per_page'] = per_page
         if requester_emails:
             url_params['requester_emails'] = ','.join(requester_emails)
-        get_tickets = requests.get(self.base_url + "/tickets", params=url_params, headers=self.headers)
+        get_tickets = requests.get(
+            self.base_url + "/tickets", params=url_params, headers=self.headers)
         if get_tickets.status_code != 200:
             raise SupportBeeException(error_type="Get Ticket Error", message="Wrong status code received - " +
                                                                              str(get_tickets.status_code))
@@ -57,21 +60,26 @@ class SupportBee:
         write_ticket['agent_replies_count'] = ticket['agent_replies_count']
         write_ticket['comments_count'] = ticket['comments_count']
         write_ticket['created_at'] = arrow.get(ticket['created_at']).datetime
-        write_ticket['last_activity_at'] = arrow.get(ticket['last_activity_at']).datetime
+        write_ticket['last_activity_at'] = arrow.get(
+            ticket['last_activity_at']).datetime
         write_ticket['unanswered'] = ticket['unanswered']
         write_ticket['closed'] = ticket['archived']
         write_ticket['private'] = ticket['private']
         write_ticket['trash'] = ticket['trash']
         write_ticket['draft'] = ticket['draft']
         try:
-            write_ticket['current_team_assignee_id'] = ticket['current_team_assignee']['team']['id']
-            write_ticket['current_team_assignee_name'] = ticket['current_team_assignee']['team']['name']
+            write_ticket['current_team_assignee_id'] = ticket[
+                'current_team_assignee']['team']['id']
+            write_ticket['current_team_assignee_name'] = ticket[
+                'current_team_assignee']['team']['name']
         except KeyError:
             write_ticket['current_team_assignee_id'] = None
             write_ticket['current_team_assignee_name'] = None
         try:
-            write_ticket['current_user_assignee_id'] = ticket['current_user_assignee']['user']['id']
-            write_ticket['current_user_assignee_name'] = ticket['current_user_assignee']['user']['name']
+            write_ticket['current_user_assignee_id'] = ticket[
+                'current_user_assignee']['user']['id']
+            write_ticket['current_user_assignee_name'] = ticket[
+                'current_user_assignee']['user']['name']
         except KeyError:
             write_ticket['current_user_assignee_id'] = None
             write_ticket['current_user_assignee_name'] = None
@@ -84,7 +92,8 @@ class SupportBee:
         write_ticket['requester_id'] = ticket['requester']['id']
         write_ticket['requester_name'] = ticket['requester']['name']
         write_ticket['requester_email'] = ticket['requester']['email']
-        r.table('tickets').insert(write_ticket, conflict="replace").run(self.r_conn)
+        r.table('tickets').insert(write_ticket,
+                                  conflict="replace").run(self.r_conn)
 
     def get_replies(self, ticket_id):
         url_params = self.url_params
@@ -92,7 +101,7 @@ class SupportBee:
                                    headers=self.headers)
         if get_replies.status_code != 200:
             raise SupportBeeException(error_type="Get Replies Error", message="Wrong status code received - " +
-                                                                             str(get_replies.status_code))
+                                      str(get_replies.status_code))
         replies_data = simplejson.loads(get_replies.text)
         reply_return = []
         for reply in replies_data['replies']:
@@ -109,10 +118,12 @@ class SupportBee:
 
     def write_replies(self, replies):
         for reply in replies:
-            r.table('replies').insert(reply, conflict="replace").run(self.r_conn)
+            r.table('replies').insert(
+                reply, conflict="replace").run(self.r_conn)
 
     def get_replies_db(self, ticket_id):
-        get_replies = r.table('replies').filter({'ticket_id': ticket_id}).run(self.r_conn)
+        get_replies = r.table('replies').filter(
+            {'ticket_id': ticket_id}).run(self.r_conn)
         replies_return = []
         for reply in get_replies:
             replies_return.append(reply)
@@ -122,9 +133,11 @@ class SupportBee:
         tickets = r.table('tickets')
         if since or until:
             if since:
-                tickets = tickets.filter(r.row["created_at"] >= arrow.get(since).to('utc').datetime)
+                tickets = tickets.filter(
+                    r.row["created_at"] >= arrow.get(since).to('utc').datetime)
             if until:
-                tickets = tickets.filter(r.row["created_at"] <= arrow.get(until).to('utc').datetime)
+                tickets = tickets.filter(
+                    r.row["created_at"] <= arrow.get(until).to('utc').datetime)
         if tickets.count().run(self.r_conn):
             print(tickets.count().run(self.r_conn), " tickets found")
             tickets = tickets.run(self.r_conn)
@@ -151,7 +164,8 @@ class SupportBee:
             ws_second["A"+str(c)] = ticket['subject']
             ws_second["B"+str(c)] = ticket['current_team_assignee_name']
             ws_second["C" + str(c)] = ticket['current_user_assignee_name']
-            created_at = arrow.get(ticket['created_at']).to(self.app_settings['web']['timezone']).datetime
+            created_at = arrow.get(ticket['created_at']).to(
+                self.app_settings['web']['timezone']).datetime
             ws_second["D" + str(c)] = created_at
             get_replies = self.get_replies_db(ticket['id'])
             replies_count = len(get_replies)
@@ -163,13 +177,16 @@ class SupportBee:
             last_response = None
             frt = None
             if replies_count == 1:
-                first_response = arrow.get(replies[0]['created_at']).to(self.app_settings['web']['timezone']).datetime
-                last_response = arrow.get(replies[0]['created_at']).to(self.app_settings['web']['timezone']).datetime
+                first_response = arrow.get(replies[0]['created_at']).to(
+                    self.app_settings['web']['timezone']).datetime
+                last_response = arrow.get(replies[0]['created_at']).to(
+                    self.app_settings['web']['timezone']).datetime
                 frt = (first_response - created_at).seconds/60
             if replies_count > 1:
                 first_response = arrow.get(replies[replies_count-1]['created_at']).to(
                     self.app_settings['web']['timezone']).datetime
-                last_response = arrow.get(replies[0]['created_at']).to(self.app_settings['web']['timezone']).datetime
+                last_response = arrow.get(replies[0]['created_at']).to(
+                    self.app_settings['web']['timezone']).datetime
                 frt = (first_response - created_at).seconds/60
             ws_second["E" + str(c)] = first_response
             ws_second["F" + str(c)] = last_response
@@ -190,11 +207,13 @@ class SupportBee:
                 ws_second["H" + str(c)] = None
             ws_second["I" + str(c)] = frt
             ws_second["J" + str(c)] = ct
-            ws_second["K" + str(c)] = ticket['requester_name'] + " <" + ticket['requester_email'] + ">"
+            ws_second["K" + str(c)] = ticket['requester_name'] + \
+                " <" + ticket['requester_email'] + ">"
         wb.save("xlsx/" + filename + ".xlsx")
 
 
 class SupportBeeException:
+
     def __init__(self, error_type, message):
         self.error_type = error_type
         self.message = message
