@@ -2,3 +2,4 @@ assets/bower_components/*
 /*.xlsx
 /xlsx/*.x*
 /*.orig
+config.ini
